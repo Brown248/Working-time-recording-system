@@ -1,0 +1,68 @@
+# .htaccess - การตั้งค่าความปลอดภัยสำหรับ Apache
+
+# ป้องกันการแสดง directory listing
+Options -Indexes
+
+# เปิดใช้งาน Rewrite Engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Redirect index.html ไปที่ index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^index\.html$ index.php [L]
+</IfModule>
+
+# ป้องกันการเข้าถึงไฟล์ที่ไม่ควรเปิดเผย
+<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|sql|bak|env)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ป้องกัน config.php ไม่ให้เข้าถึงโดยตรง (แต่ยัง include ได้)
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# ตั้งค่า PHP Error Reporting
+php_flag display_errors off
+php_flag log_errors on
+php_value error_log /tmp/php_errors.log
+
+# ป้องกัน XSS และ Clickjacking
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# เปิดใช้งาน GZIP Compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+</IfModule>
+
+# Browser Caching
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+</IfModule>
+
+# ป้องกัน SQL Injection ผ่าน URL
+<IfModule mod_rewrite.c>
+    RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
+    RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
+    RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2})
+    RewriteRule ^(.*)$ index.php [F,L]
+</IfModule>
+
+# ตั้งค่า Session
+php_value session.cookie_httponly 1
+php_value session.cookie_secure 0
+php_value session.use_only_cookies 1
